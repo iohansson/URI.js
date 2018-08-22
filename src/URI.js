@@ -15,15 +15,15 @@
   // https://github.com/umdjs/umd/blob/master/returnExports.js
   if (typeof module === 'object' && module.exports) {
     // Node
-    module.exports = factory(require('./punycode'), require('./IPv6'), require('./SecondLevelDomains'));
+    module.exports = factory(require('./punycode'), require('./IPv6'), require('./SecondLevelDomains'), require('windows-1251'));
   } else if (typeof define === 'function' && define.amd) {
     // AMD. Register as an anonymous module.
     define(['./punycode', './IPv6', './SecondLevelDomains'], factory);
   } else {
     // Browser globals (root is window)
-    root.URI = factory(root.punycode, root.IPv6, root.SecondLevelDomains, root);
+    root.URI = factory(root.punycode, root.IPv6, root.SecondLevelDomains, root.windows1251, root);
   }
-}(this, function (punycode, IPv6, SLD, root) {
+}(this, function (punycode, IPv6, SLD, windows1251, root) {
   'use strict';
   /*global location, escape, unescape */
   // FIXME: v2.0.0 renamce non-camelCase properties to uppercase
@@ -311,6 +311,10 @@
   URI.iso8859 = function() {
     URI.encode = escape;
     URI.decode = unescape;
+  };
+  URI.windows1251 = function() {
+    URI.encode = windows1251.encode;
+    URI.decode = windows1251.decode;
   };
   URI.unicode = function() {
     URI.encode = strictEncodeURIComponent;
