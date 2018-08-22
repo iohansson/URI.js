@@ -203,7 +203,8 @@
       // state
       preventInvalidHostname: URI.preventInvalidHostname,
       duplicateQueryParameters: URI.duplicateQueryParameters,
-      escapeQuerySpace: URI.escapeQuerySpace
+      escapeQuerySpace: URI.escapeQuerySpace,
+      doNotEncodeQuery: URI.doNotEncodeQuery,
     };
   };
   // state: throw on invalid hostname
@@ -214,6 +215,8 @@
   URI.duplicateQueryParameters = false;
   // state: replaces + with %20 (space in query strings)
   URI.escapeQuerySpace = true;
+  // state: do not encode query
+  URI.doNotEncodeQuery = false;
   // static properties
   URI.protocol_expression = /^[a-z][a-z0-9.+-]*$/i;
   URI.idn_expression = /[^a-z0-9\._-]/i;
@@ -734,7 +737,7 @@
 
     return t;
   };
-  URI.buildQuery = function(data, duplicateQueryParameters, escapeQuerySpace) {
+  URI.buildQuery = function(data, duplicateQueryParameters, escapeQuerySpace, doNotEncodeQuery) {
     // according to http://tools.ietf.org/html/rfc3986 or http://labs.apache.org/webarch/uri/rfc/rfc3986.html
     // being »-._~!$&'()*+,;=:@/?« %HEX and alnum are allowed
     // the RFC explicitly states ?/foo being a valid use case, no mention of parameter syntax!
@@ -749,23 +752,24 @@
           unique = {};
           for (i = 0, length = data[key].length; i < length; i++) {
             if (data[key][i] !== undefined && unique[data[key][i] + ''] === undefined) {
-              t += '&' + URI.buildQueryParameter(key, data[key][i], escapeQuerySpace);
+              t += '&' + URI.buildQueryParameter(key, data[key][i], escapeQuerySpace, doNotEncodeQuery);
               if (duplicateQueryParameters !== true) {
                 unique[data[key][i] + ''] = true;
               }
             }
           }
         } else if (data[key] !== undefined) {
-          t += '&' + URI.buildQueryParameter(key, data[key], escapeQuerySpace);
+          t += '&' + URI.buildQueryParameter(key, data[key], escapeQuerySpace, doNotEncodeQuery);
         }
       }
     }
 
     return t.substring(1);
   };
-  URI.buildQueryParameter = function(name, value, escapeQuerySpace) {
+  URI.buildQueryParameter = function(name, value, escapeQuerySpace, doNotEncodeQuery) {
     // http://www.w3.org/TR/REC-html40/interact/forms.html#form-content-type -- application/x-www-form-urlencoded
     // don't append "=" for null values, according to http://dvcs.w3.org/hg/url/raw-file/tip/Overview.html#url-parameter-serialization
+    if (doNotEncodeQuery) return name + (value !== null ? '=' + value : '');
     return URI.encodeQuery(name, escapeQuerySpace) + (value !== null ? '=' + URI.encodeQuery(value, escapeQuerySpace) : '');
   };
 
@@ -1851,11 +1855,11 @@
     } else if (typeof v === 'function') {
       var data = URI.parseQuery(this._parts.query, this._parts.escapeQuerySpace);
       var result = v.call(this, data);
-      this._parts.query = URI.buildQuery(result || data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace);
+      this._parts.query = URI.buildQuery(result || data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace, this._parts.doNotEncodeQuery);
       this.build(!build);
       return this;
     } else if (v !== undefined && typeof v !== 'string') {
-      this._parts.query = URI.buildQuery(v, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace);
+      this._parts.query = URI.buildQuery(v, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace, this._parts.doNotEncodeQuery);
       this.build(!build);
       return this;
     } else {
@@ -1877,7 +1881,7 @@
       throw new TypeError('URI.addQuery() accepts an object, string as the name parameter');
     }
 
-    this._parts.query = URI.buildQuery(data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace);
+    this._parts.query = URI.buildQuery(data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace, this._parts.doNotEncodeQuery);
     if (typeof name !== 'string') {
       build = value;
     }
@@ -1888,7 +1892,7 @@
   p.addQuery = function(name, value, build) {
     var data = URI.parseQuery(this._parts.query, this._parts.escapeQuerySpace);
     URI.addQuery(data, name, value === undefined ? null : value);
-    this._parts.query = URI.buildQuery(data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace);
+    this._parts.query = URI.buildQuery(data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace, this._parts.doNotEncodeQuery);
     if (typeof name !== 'string') {
       build = value;
     }
@@ -1899,7 +1903,7 @@
   p.removeQuery = function(name, value, build) {
     var data = URI.parseQuery(this._parts.query, this._parts.escapeQuerySpace);
     URI.removeQuery(data, name, value);
-    this._parts.query = URI.buildQuery(data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace);
+    this._parts.query = URI.buildQuery(data, this._parts.duplicateQueryParameters, this._parts.escapeQuerySpace, this._parts.doNotEncodeQuery);
     if (typeof name !== 'string') {
       build = value;
     }
